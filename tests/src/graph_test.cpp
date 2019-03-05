@@ -3,21 +3,20 @@
 
 using namespace gns;
 
-TEST(GraphListTestSuite, DefaultConstructor) {
+TEST(GraphListTestSuit, DefaultConstructorSuccess) {
    
-	GraphList graph;
-	ASSERT_TRUE(graph.GetSize() == 0);
+//	GraphList graph;
+//	ASSERT_TRUE(graph.GetSize() == 0);
 	
 }
 
-TEST(GraphListTestSuite, Constructor) {
+TEST(GraphListTestSuit, AddVertexSuccess) {
    
-	GraphContainer con;
-	con.push_back(GraphVertex {10, 13});
-	con.push_back(GraphVertex {0 , 14});
+	GraphListVertex vertex;
 	
-	GraphList graph(con);
-	ASSERT_TRUE(graph.GetSize() != 0);
+	GraphList        graph;
+
+	GraphErrors err = graph.AddVertex(size_t(5), vertex);
 	
 }
 

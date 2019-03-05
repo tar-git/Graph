@@ -11,41 +11,28 @@ GraphList::GraphList()
 	: Graph()
 {}
 
-GraphList::GraphList(const GraphContainer &li)
+GraphErrors GraphList::AddVertex(const size_t id, const GraphListVertex & vertex)
 {
-	size_t size      = li.size();
-	for(const auto & vert : li){
-		
-		for(const auto & ne : vert){
-			
-			if(ne >= size) {
-				char buff[100];
-				sprintf(buff, "The graph has no vertex '%u'", ne);
-				GraphException(std::string(buff));
-			}
-			
+	for(const auto & in : vertex.incoming){
+		auto vit = m_container.find(in.first);
+		if(vit == m_container.end()){
+			return GraphErrors::ID_MISSING;
 		}
-		
-	}
-	m_container = li;
-}
-
-size_t GraphList::AddVertex(const GraphVertex & neighbors)
-{
-	size_t size = neighbors.size();
-	if(size > m_size)          {
-		GraphException("Number of neighbors exceeds number of vertices");
-	}
-	for(const auto & ne : neighbors) {
-		if(ne > m_size) {
-			char buff[100];
-			sprintf(buff, "The graph has no vertex '%u'", ne);
-			GraphException(std::string(buff));
+		else{
+			vit->second.outgoing[id] = in.second;
 		}
 	}
-	
-	m_container.push_back(neighbors);
-	return m_size++;
+	for(const auto & out : vertex.outgoing){
+		auto vit = m_container.find(out.first);
+		if(vit == m_container.end()){
+			return GraphErrors::ID_MISSING;
+		}
+		else{
+			vit->second.incoming[id] = out.second;
+		}
+	}
+	m_container[id] = vertex;
+	return GraphErrors::OK;
 }
 
 }

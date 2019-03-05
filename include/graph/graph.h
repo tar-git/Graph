@@ -4,13 +4,22 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <set>
+#include <map>
 #include <iostream>
-#include <cassert>
 
 namespace gns {
 
-typedef std::vector<std::vector<size_t>> GraphContainer;
-typedef std::vector<size_t>              GraphVertex;
+enum class GraphErrors {OK, ID_MISSING};
+
+typedef std::map<size_t, size_t> neighbour_t; //<id, weight>
+
+struct GraphListVertex {
+	neighbour_t incoming;
+	neighbour_t outgoing;
+};
+
+typedef std::map<size_t, GraphListVertex> GraphContainer;
 
 class GraphException : public std::runtime_error
 {
@@ -28,9 +37,7 @@ public:
 	Graph(Graph && right)                  = delete;
 	Graph & operator=(const Graph & right) = delete;
 	Graph & operator=(Graph && right)      = delete;
-	inline  size_t GetSize() const { return m_size; }
-	virtual size_t AddVertex(const std::vector<size_t> & neighbors) = 0;
-
+	virtual size_t GetSize() const = 0;
 	
 protected:
 	GraphContainer m_container;
@@ -41,13 +48,13 @@ class GraphList : public Graph
 {
 public:
 	GraphList();
-	GraphList(const GraphContainer & li);
 	~GraphList() {}
 	GraphList(const GraphList & right);
 	GraphList(GraphList && right);
 	GraphList & operator=(const GraphList & right);
 	GraphList & operator=(GraphList && right);	
-	virtual size_t AddVertex(const GraphVertex & neighbors);
+	GraphErrors AddVertex(const size_t id, const GraphListVertex & vertex);
+	inline virtual size_t GetSize() const { return m_container.size(); }
 };
 
 class GraphMatrix : public Graph
