@@ -7,19 +7,22 @@
 #include <set>
 #include <map>
 #include <iostream>
+#include <ostream>
 
 namespace gns {
 
-enum class GraphErrors {OK, ID_MISSING};
+enum class GraphErrors {OK, ID_MISSING, WEIGHT_NOT_MATCH};
 
 typedef std::map<size_t, size_t> neighbour_t; //<id, weight>
 
-struct GraphListVertex {
+struct GraphVertexData {
 	neighbour_t incoming;
 	neighbour_t outgoing;
 };
 
-typedef std::map<size_t, GraphListVertex> GraphContainer;
+typedef std::pair<size_t, GraphVertexData> GraphVertex;
+
+typedef std::map<size_t, GraphVertexData> GraphContainer;
 
 class GraphException : public std::runtime_error
 {
@@ -29,47 +32,26 @@ public:
 
 class Graph
 {
-public:
-	
-	Graph();
-	~Graph() {}
-	Graph(const Graph & right)             = delete;
-	Graph(Graph && right)                  = delete;
-	Graph & operator=(const Graph & right) = delete;
-	Graph & operator=(Graph && right)      = delete;
-	virtual size_t GetSize() const = 0;
-	
-protected:
+	friend std::ostream & operator<<(std::ostream & out, const Graph & graph);
 	GraphContainer m_container;
 	size_t         m_size;
-};
-
-class GraphList : public Graph
-{
+	GraphErrors CheckVertexNeighbors(const size_t id, const neighbour_t & neigh) const;
 public:
-	GraphList();
-	~GraphList() {}
-	GraphList(const GraphList & right);
-	GraphList(GraphList && right);
-	GraphList & operator=(const GraphList & right);
-	GraphList & operator=(GraphList && right);	
-	GraphErrors AddVertex(const size_t id, const GraphListVertex & vertex);
-	inline virtual size_t GetSize() const { return m_container.size(); }
-};
-
-class GraphMatrix : public Graph
-{
-public:
-	GraphMatrix();
-	~GraphMatrix() {}
-	GraphMatrix(const GraphMatrix & right);
-	GraphMatrix(GraphMatrix && right);
-	GraphMatrix & operator=(const GraphMatrix & right);
-	GraphMatrix & operator=(GraphMatrix && right);	
+	Graph();
+	~Graph() {}
+	Graph(const Graph & right);
+	Graph(Graph && right);
+	Graph & operator=(const Graph & right);
+	Graph & operator=(Graph && right);	
+	GraphContainer::const_iterator begin();
+	GraphContainer::const_iterator end();
+	GraphContainer::const_iterator FindVertex(const size_t id) const;
+	GraphErrors InsertVertex(const size_t id, const GraphVertexData & vertex);
+	GraphErrors EraseVertex(const size_t id);
+	GraphErrors MergeVertices(const size_t dest, const size_t source);
+	inline size_t GetSize() const { return m_container.size(); }
 };
 
 }
-
-
 
 #endif
