@@ -4,15 +4,43 @@
 namespace gns {
 
 Graph::Graph() 
-	: m_size(0), m_container(GraphContainer())
+	: m_container(GraphContainer())
 {}
 
-GraphContainer::const_iterator Graph::begin()
+Graph::Graph(const Graph &right)
+	: m_container(right.m_container)
+{}
+
+Graph::Graph(Graph &&right)
+	: m_container(std::move(right.m_container))
+{}
+
+Graph & Graph::operator=(const Graph &right)
+{
+	if(this != &right){
+		m_container = right.m_container;
+	}
+	return *this;
+}
+
+Graph & Graph::operator=(Graph && right){
+	if(this != &right){
+		m_container = std::move(right.m_container);
+	}
+	return *this;
+}
+
+Graph Graph::operator+(const Graph &right)
+{
+	return *GraphUnion(right);
+}
+
+GraphContainer::const_iterator Graph::begin() const
 {
 	return m_container.cbegin();
 }
 
-GraphContainer::const_iterator Graph::end()
+GraphContainer::const_iterator Graph::end() const
 {
 	return m_container.cend();
 }
@@ -25,22 +53,20 @@ GraphContainer::const_iterator Graph::FindVertex(const size_t id) const
 GraphErrors Graph::InsertVertex(const size_t id, const GraphVertexData & vertex)
 {
 	GraphErrors result = CheckVertexNeighbors(id, vertex.incoming);
-	if(result != GraphErrors::OK){
-		return result;
-	}
+	IF_GRAPH_ERROR(result);
 	result = CheckVertexNeighbors(id, vertex.outgoing);
-	if(result != GraphErrors::OK){
-		return result;
-	}
+	IF_GRAPH_ERROR(result);
 	
 	for(const auto & in : vertex.incoming){
 		const auto & out_val = vertex.outgoing.find(in.first);
-		if(out_val != vertex.outgoing.end() && in.second != out_val->second){ // Для 1 ребра может быть только 1 вес
+		if(out_val != vertex.outgoing.end() && in.second != out_val->second){ // for 1 edge there can be only 1 weight
 			fprintf(stderr, "\nincoming vertex weight does not match outgoing weight: %u <-> %u [%u != %u]\n",
 				in.first, id, in.second, out_val->second);
 			return GraphErrors::WEIGHT_NOT_MATCH;
 		}
 	}
+	
+	ClearVertexConnections(id);
 	
 	for(const auto & in : vertex.incoming) {
 		m_container[in.first].outgoing[id] = in.second;
@@ -52,6 +78,11 @@ GraphErrors Graph::InsertVertex(const size_t id, const GraphVertexData & vertex)
 
 	m_container[id] = vertex;
 	return GraphErrors::OK;
+}
+
+GraphErrors Graph::AddVertex(const GraphVertex &vertex)
+{
+	return InsertVertex(vertex.first, vertex.second);
 }
 
 GraphErrors Graph::EraseVertex(const size_t id)
@@ -80,24 +111,65 @@ GraphErrors Graph::MergeVertices(const size_t dest, const size_t source)
 	if(vsource == m_container.end()){
 		return GraphErrors::ID_MISSING;
 	}
+	auto & incoming  = vdest->second.incoming;
+	auto & outgoing  = vdest->second.outgoing;
 	for(const auto & vd : vsource->second.incoming){
-		auto & incoming  = vdest->second.incoming;
-		auto neighbour = m_container.find(vd.first);
-		if(neighbour == m_container.end()){
-			return GraphErrors::ID_MISSING;
+		auto neighbour   = m_container.find(vd.first);
+		if(neighbour == m_container.end()){ //Отсутствует узел, указывающий на source
+			continue;
 		}
 		neighbour->second.outgoing.erase(source);
-		if(incoming.find(vd.first) == incoming.end()){
+		if(vd.first != dest && incoming.find(vd.first) == incoming.end()){
 			incoming[vd.first] = vd.second;
+			neighbour->second.outgoing[dest] = vd.second;
 		}
 	}
 	for(const auto & vd : vsource->second.outgoing){
-		auto & outgoing = vdest->second.outgoing;
-		if(outgoing.find(vd.first) == outgoing.end()){
+		auto neighbour   = m_container.find(vd.first);
+		if(neighbour == m_container.end()){ //Отсутствует узел, на который указывает source
+			continue;
+		}
+		neighbour->second.incoming.erase(source);
+		if(vd.first != dest && outgoing.find(vd.first) == outgoing.end()){
 			outgoing[vd.first] = vd.second;
+			neighbour->second.incoming[dest] = vd.second;
 		}
 	}
-	EraseVertex(source);
+	return EraseVertex(source);
+}
+
+GraphPtr Graph::GraphUnion(const Graph &right)
+{
+	GraphPtr graph(new Graph);
+	GraphVertex vertex;
+	for(const auto & vert : *this) {
+		auto rv = right.FindVertex(vert.first);
+		if(rv == right.end()){      // add vertex of this graph
+			graph->m_container.insert(vert);
+		}
+		else{                       // add crossing vertex
+			vertex.second.clear();
+			vertex.first = vert.first;
+			vertex.second.incoming = vert.second.incoming;
+			vertex.second.outgoing = vert.second.outgoing;
+			for(const auto & neigh : rv->second.incoming){
+				vertex.second.incoming.insert(neigh);
+			}
+			for(const auto & neigh : rv->second.outgoing){
+				vertex.second.outgoing.insert(neigh);
+			}
+			graph->m_container.insert(vertex);
+		}
+		
+	}
+	
+	for(const auto & vert : right) { // add vertex of right graph
+		if(graph->FindVertex(vert.first) == graph->end()){
+			graph->m_container.insert(vert);
+		}
+	}
+
+	return graph;
 }
 
 std::ostream & operator<<(std::ostream &out, const Graph &graph)
@@ -137,6 +209,26 @@ GraphErrors Graph::CheckVertexNeighbors(const size_t id, const neighbour_t &neig
 		}
 	}
 	return GraphErrors::OK;
+}
+
+void Graph::ClearVertexConnections(const size_t id)
+{
+	auto vit = m_container.find(id);
+	if(vit == m_container.end()) {
+		return;
+	}
+	for(const auto & vd : vit->second.incoming){
+		auto neit = m_container.find(vd.first);
+		if(neit != m_container.end()){
+			neit->second.outgoing.erase(id);
+		}
+	}
+	for(const auto & vd : vit->second.outgoing){
+		auto neit = m_container.find(vd.first);
+		if(neit != m_container.end()){
+			neit->second.incoming.erase(id);
+		}
+	}
 }
 
 }
