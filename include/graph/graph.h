@@ -8,10 +8,13 @@
 #include <map>
 #include <iostream>
 #include <ostream>
+#include <algorithm>
 
-#define IF_GRAPH_ERROR(exp) \
-	if(exp != GraphErrors::OK) \
-	    return exp;
+#define IF_GRAPH_ERROR(exp, err) \
+	(err) = (exp); \
+	if((err) != GraphErrors::OK) { \
+	    return (err); \
+	}
 
 namespace gns {
 
@@ -31,7 +34,13 @@ struct GraphVertexData {
 
 typedef std::pair<size_t, GraphVertexData> GraphVertex;
 
+typedef std::pair<size_t, neighbour_t> AdjacencyListNode;
+
 typedef std::map<size_t, GraphVertexData> GraphContainer;
+
+typedef std::map<size_t, neighbour_t> AdjacencyList;
+
+typedef std::vector<std::vector<size_t>> AdjacencyMatrix;
 
 class GraphException : public std::runtime_error
 {
@@ -44,9 +53,12 @@ class Graph
 	friend std::ostream & operator<<(std::ostream & out, const Graph & graph);
 	GraphContainer m_container;
 	GraphErrors CheckVertexNeighbors(const size_t id, const neighbour_t & neigh) const;
-	void ClearVertexConnections(const size_t id);  
+	void ClearVertexConnections(const size_t id);
 public:
 	Graph();
+	Graph(const AdjacencyList & alist);
+	Graph(const AdjacencyMatrix & matrix);
+	Graph(const std::initializer_list<AdjacencyListNode> & inlist);
 	~Graph() {}
 	Graph(const Graph & right);
 	Graph(Graph && right);
@@ -61,6 +73,8 @@ public:
 	GraphErrors EraseVertex(const size_t id);
 	GraphErrors MergeVertices(const size_t dest, const size_t source);
 	GraphPtr GraphUnion(const Graph & right);
+	void SetAdjacencyList(const AdjacencyList & alist);
+	void SetAdjacencyMatrix(const AdjacencyMatrix & matrix);
 	inline size_t GetSize() const { return m_container.size(); }
 };
 

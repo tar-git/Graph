@@ -8,11 +8,24 @@ void CheckConnections(const Graph & graph) {
 		size_t id = vert.first;
 		for(const auto & ref : vert.second.incoming){
 			auto vit = graph.FindVertex(ref.first);
+			
+			//
+			bool tmp = vit->second.outgoing.find(id) == vit->second.outgoing.end();
+			int tmp2 = 0;
+			//
+			
 			ASSERT_TRUE(vit != graph.end());
 			ASSERT_FALSE(vit->second.outgoing.find(id) == vit->second.outgoing.end());
+
 		}
 		for(const auto & ref : vert.second.outgoing){
 			auto vit = graph.FindVertex(ref.first);
+			
+			//
+			bool tmp = vit->second.incoming.find(id) == vit->second.incoming.end();
+			int tmp2 = 0;
+			//
+			
 			ASSERT_TRUE(vit != graph.end());
 			ASSERT_FALSE(vit->second.incoming.find(id) == vit->second.incoming.end());
 		}
@@ -192,7 +205,7 @@ TEST(GraphTestSuit, InsertVertexSuccess) {
 	GraphErrors insert_existing_vertex = graph.InsertVertex(1, vertex);
 	ASSERT_TRUE(insert_existing_vertex == GraphErrors::OK);
 	
-//	std::cout << graph << "\n\n";
+	std::cout << graph << "\n\n";
 	
 	CheckConnections(graph);
 }
@@ -442,4 +455,83 @@ TEST(GraphTestSuit, PlusOperator) {
 //			  << "graph3:\n" << graph3 << "\n\n";
 	
 	CheckConnections(graph3);
+}
+
+TEST(GraphTestSuit, AdjacencyListConstructor){
+	AdjacencyList al =
+	{ 
+		{1, {{2,2}, {3,3}, {4,0}, {127, 3}}},
+		{2, {{5,5}, {6,0}, {7,7}}},
+		{3, {{8,0}, {9,9}, {10,10}}},
+		{3, {{1,0}, {2,9}, {3,10}}},
+		{4, {{1,1}, {7,7}}}
+	};
+	
+	Graph graph (al);
+	
+	CheckConnections(graph);
+
+//	std::cout << graph << "\n\n";
+	
+	graph = 
+	{ 
+		{1, {{2,2}, {3,3}, {4,0}, {127, 3}}},
+		{2, {{5,5}, {6,0}, {7,7}}},
+		{3, {{8,0}, {9,9}, {10,10}}},
+		{3, {{1,0}, {2,9}, {3,10}}},
+		{4, {{1,1}, {7,7}}}
+	};
+
+//	std::cout << graph << "\n\n";
+	
+	CheckConnections(graph);
+}
+
+TEST(GraphTestSuit, AdjacencyMatrixConstructor){
+	
+	AdjacencyMatrix matrix = {
+		
+		{0, 1, 2, 3, 4, 5},
+		{1, 0, 2, 3, 4},
+		{2, 1, 0, 3, 4, 5},
+		{3, 1, 2, 0, 4, 5},
+		{4, 1, 2, 3, 0, 5},
+		{5, 1, 2, 3, 4, 0},
+		
+	};
+	
+	Graph graph(matrix);
+	
+	ASSERT_TRUE(graph.GetSize() == 0);
+	CheckConnections(graph);
+	
+	matrix = {
+			
+		{0, 1, 2, 3, 4, 5},
+		{1, 0, 2, 3, 4, 5},
+		{2, 1, 0, 3, 4, 5},
+		{3, 1, 2, 0, 4, 5},
+		{4, 1, 2, 3, 0, 5},
+		{5, 1, 2, 3, 4, 0}
+		
+	};
+	
+	graph.SetAdjacencyMatrix(matrix);
+	CheckConnections(graph);
+	
+	matrix = {
+			
+		{0, 0, 0, 0, 0, 0},
+		{0, 0, 0, 1, 0, 0},
+		{0, 0, 0, 0, 0, 0},
+		{0, 0, 4, 0, 5, 0},
+		{0, 0, 0, 0, 5, 0},
+		{0, 0, 0, 0, 0, 0}
+		
+	};
+	
+	graph.SetAdjacencyMatrix(matrix);
+	std::cout << graph << "\n\n";
+	CheckConnections(graph);
+	
 }

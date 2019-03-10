@@ -7,6 +7,32 @@ Graph::Graph()
 	: m_container(GraphContainer())
 {}
 
+Graph::Graph(const AdjacencyList & alist){
+	SetAdjacencyList(alist);
+}
+
+Graph::Graph(const AdjacencyMatrix &matrix)
+{
+	SetAdjacencyMatrix(matrix);
+}
+
+Graph::Graph(const std::initializer_list<AdjacencyListNode> &inlist)
+{
+	std::set<size_t> duplicates;
+	m_container.clear();
+	for(const auto & node : inlist){
+		size_t id = node.first;
+		if(duplicates.find(id) != duplicates.end()){
+			continue;
+		}
+		duplicates.insert(id);
+		m_container[id].outgoing = node.second;
+		for(const auto & ref : node.second){
+			m_container[ref.first].incoming[id] = ref.second;
+		}
+	}
+}
+
 Graph::Graph(const Graph &right)
 	: m_container(right.m_container)
 {}
@@ -52,10 +78,9 @@ GraphContainer::const_iterator Graph::FindVertex(const size_t id) const
 
 GraphErrors Graph::InsertVertex(const size_t id, const GraphVertexData & vertex)
 {
-	GraphErrors result = CheckVertexNeighbors(id, vertex.incoming);
-	IF_GRAPH_ERROR(result);
-	result = CheckVertexNeighbors(id, vertex.outgoing);
-	IF_GRAPH_ERROR(result);
+	GraphErrors result;
+	IF_GRAPH_ERROR(CheckVertexNeighbors(id, vertex.incoming), result);
+	IF_GRAPH_ERROR(CheckVertexNeighbors(id, vertex.incoming), result);
 	
 	for(const auto & in : vertex.incoming){
 		const auto & out_val = vertex.outgoing.find(in.first);
@@ -170,6 +195,38 @@ GraphPtr Graph::GraphUnion(const Graph &right)
 	}
 
 	return graph;
+}
+
+void Graph::SetAdjacencyList(const AdjacencyList &alist)
+{
+	for(const auto & node : alist){
+		m_container[node.first].outgoing = node.second;
+		for(const auto & ref : node.second){
+			m_container[ref.first].incoming[node.first] = ref.second;
+		}
+	}
+}
+
+void Graph::SetAdjacencyMatrix(const AdjacencyMatrix &matrix)
+{
+	size_t size = matrix.size();
+	for(int i = 0; i < size; ++i){
+		if(matrix[i].size() != size){
+			m_container.clear();
+			fprintf(stderr, "the matrix should be square!");
+			return;
+		}
+		for(int j = 0; j < matrix[i].size(); ++j){
+			
+			if(matrix[i][j] != 0){
+				m_container[i].outgoing[j] = matrix[i][j];
+			}
+			if(matrix[j][i] != 0){
+				m_container[i].incoming[j] = matrix[j][i];
+			}
+			
+		}
+	}
 }
 
 std::ostream & operator<<(std::ostream &out, const Graph &graph)
